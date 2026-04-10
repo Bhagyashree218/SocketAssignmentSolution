@@ -1,5 +1,7 @@
-﻿using System.Net.Sockets;
-using System.Text;
+﻿using System;
+using System.IO;
+using System.Net.Sockets;
+using ClientApp.Services;
 
 class Program
 {
@@ -9,6 +11,8 @@ class Program
         {
             TcpClient client = new TcpClient("127.0.0.1", 5000);
 
+            var encryptionService = new EncryptionService();
+
             NetworkStream stream = client.GetStream();
             StreamReader reader = new StreamReader(stream);
             StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
@@ -16,15 +20,25 @@ class Program
             Console.Write("Enter message (e.g., SetA-Two): ");
             string message = Console.ReadLine();
 
-            string encryptedMessage = Encrypt(message);
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                Console.WriteLine("Invalid input. Please enter something like SetA-Two");
+                return;
+            }
+
+            string encryptedMessage = encryptionService.Encrypt(message);
+
+            Console.WriteLine("Original: " + message);
+
             writer.WriteLine(encryptedMessage);
+            writer.Flush();
 
             Console.WriteLine("Server response:");
 
             string response;
             while ((response = reader.ReadLine()) != null)
             {
-                string decrypted = Decrypt(response);
+                string decrypted = encryptionService.Decrypt(response);
                 Console.WriteLine(decrypted);
             }
 
@@ -34,16 +48,5 @@ class Program
         {
             Console.WriteLine("Error: " + ex.Message);
         }
-    }
-
-    static string Encrypt(string text)
-    {
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
-    }
-
-    static string Decrypt(string base64Text)
-    {
-        byte[] bytes = Convert.FromBase64String(base64Text);
-        return Encoding.UTF8.GetString(bytes);
     }
 }
